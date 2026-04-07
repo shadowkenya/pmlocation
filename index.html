@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Precision Geo-Map Pro</title>
+    <title>Live Tactical Tracker</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -11,182 +11,93 @@
     <style>
         :root {
             --neon: #00f2ff;
-            --bg: #05070a;
-            --glass: rgba(10, 15, 25, 0.9);
+            --danger: #ff3e3e;
+            --glass: rgba(10, 15, 25, 0.85);
         }
 
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg);
-            font-family: 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #05070a; font-family: 'Inter', sans-serif; overflow: hidden; }
 
-        /* Initial Centered Button */
-        .launch-container {
-            text-align: center;
-            z-index: 10;
-        }
-
+        /* Centered Entry */
+        .hero { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
         .btn-launch {
             background: linear-gradient(45deg, #0062ff, #00f2ff);
-            color: white;
-            padding: 20px 40px;
-            border: none;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            cursor: pointer;
-            box-shadow: 0 0 30px rgba(0, 242, 255, 0.4);
-            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: white; padding: 22px 45px; border: none; border-radius: 50px;
+            font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer; box-shadow: 0 0 30px rgba(0, 242, 255, 0.3); transition: 0.3s;
         }
+        .btn-launch:hover { transform: scale(1.05); box-shadow: 0 0 50px rgba(0, 242, 255, 0.5); }
 
-        .btn-launch:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 50px rgba(0, 242, 255, 0.6);
+        /* Full Screen UI */
+        #trackerUI { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 100; flex-direction: column; }
+        #map { flex-grow: 1; width: 100%; background: #000; }
+
+        /* Top Overlay */
+        .top-bar {
+            position: absolute; top: 20px; left: 20px; right: 20px; z-index: 1000;
+            display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none;
         }
-
-        /* Full Screen Overlay */
-        #mapOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg);
-            z-index: 100;
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            animation: fadeIn 0.5s ease-out;
+        .info-glass {
+            background: var(--glass); backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 242, 255, 0.2); padding: 15px; border-radius: 15px;
+            color: white; width: 280px; pointer-events: auto;
         }
+        .status-dot { height: 8px; width: 8px; background: #4ade80; border-radius: 50%; display: inline-block; margin-right: 8px; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(1.1); }
-            to { opacity: 1; transform: scale(1); }
+        /* Controls */
+        .side-btns { display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
+        .circle-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: none;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 20px; cursor: pointer; transition: 0.2s;
         }
+        .close-btn { background: var(--danger); box-shadow: 0 0 15px rgba(255, 62, 62, 0.4); }
+        .recenter-btn { background: var(--neon); color: #000; box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); }
 
-        #map {
-            flex-grow: 1;
-            width: 100%;
-            background: #000;
+        /* Coordinates Footer */
+        .coords-footer {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 30px;
+            color: var(--neon); font-family: monospace; font-size: 0.9rem; z-index: 1000;
+            border: 1px solid var(--neon); letter-spacing: 1px;
         }
-
-        /* UI Elements on Map */
-        .map-controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-            pointer-events: none;
-        }
-
-        .info-panel {
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 242, 255, 0.3);
-            padding: 15px 25px;
-            border-radius: 12px;
-            color: white;
-            max-width: 70%;
-            pointer-events: auto;
-        }
-
-        .close-btn {
-            background: rgba(255, 50, 50, 0.9);
-            color: white;
-            border: none;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            pointer-events: auto;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            transition: 0.3s;
-        }
-
-        .close-btn:hover { background: #ff0000; transform: rotate(90deg); }
-
-        .landmark-title { color: var(--neon); font-weight: bold; margin: 0; font-size: 1.1rem; }
-        .address-text { font-size: 0.85rem; opacity: 0.8; margin-top: 5px; }
-
-        /* Scanning Animation */
-        .scanner {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100px;
-            height: 100px;
-            border: 2px solid var(--neon);
-            border-radius: 50%;
-            pointer-events: none;
-            display: none;
-            z-index: 1001;
-        }
-        .scanner::after {
-            content: "";
-            position: absolute;
-            top: -5px; left: -5px; right: -5px; bottom: -5px;
-            border: 2px solid var(--neon);
-            border-radius: 50%;
-            animation: ping 1.5s infinite;
-        }
-        @keyframes ping { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.5); opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <div class="launch-container">
-        <button class="btn-launch" onclick="initLiveTracker()">Identify My Location</button>
-        <p style="color: #4a5568; margin-top: 15px; font-size: 0.9rem;">Requires GPS Permission</p>
+    <div class="hero">
+        <button class="btn-launch" onclick="startLiveTracking()">Activate Real-Time Tracker</button>
+        <p style="color: #64748b; margin-top: 20px;">Precision Landmark Detection Enabled</p>
     </div>
 
-    <div id="mapOverlay">
-        <div class="map-controls">
-            <div class="info-panel" id="infoPanel">
-                <p class="landmark-title" id="landmarkName">Initializing Satellites...</p>
-                <p class="address-text" id="fullAddress">Waiting for precision fix...</p>
+    <div id="trackerUI">
+        <div class="top-bar">
+            <div class="info-glass">
+                <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; margin-bottom: 5px;">
+                    <span class="status-dot"></span>Live Tracking Active
+                </div>
+                <div id="landmark" style="font-weight: 800; font-size: 1.1rem; color: var(--neon);">Scanning...</div>
+                <div id="address" style="font-size: 0.8rem; opacity: 0.8; margin-top: 5px; height: 40px; overflow: hidden;">Acquiring Signal</div>
             </div>
-            <button class="close-btn" onclick="closeTracker()">&times;</button>
+            
+            <div class="side-btns">
+                <button class="circle-btn close-btn" onclick="stopTracking()" title="Close">&times;</button>
+                <button class="circle-btn recenter-btn" onclick="toggleFollow()" id="followBtn" title="Lock Target">⊕</button>
+            </div>
         </div>
-        
+
         <div id="map"></div>
-        <div class="scanner" id="scanner"></div>
+        <div id="coords" class="coords-footer">LAT: 0.0000 | LON: 0.0000</div>
     </div>
 
 <script>
-    let map;
-    let marker;
+    let map, marker, circle, watchId;
+    let followMode = true;
 
-    function initLiveTracker() {
-        const overlay = document.getElementById('mapOverlay');
-        const scanner = document.getElementById('scanner');
+    function startLiveTracking() {
+        document.getElementById('trackerUI').style.display = 'flex';
         
-        overlay.style.display = 'flex';
-        scanner.style.display = 'block';
-
-        if (!navigator.geolocation) {
-            alert("Your browser does not support Geolocation.");
-            return;
-        }
-
-        // Initialize Map if not already created
+        // Initialize Map
         if (!map) {
             map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -194,51 +105,66 @@
             }).addTo(map);
         }
 
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const { latitude, longitude } = position.coords;
-                
-                // Close-up zoom for landmarks
-                map.setView([latitude, longitude], 17);
-                scanner.style.display = 'none';
-
-                // Add or move marker
-                if (marker) map.removeLayer(marker);
-                marker = L.circleMarker([latitude, longitude], {
-                    radius: 12,
-                    fillColor: "#00f2ff",
-                    color: "#fff",
-                    weight: 3,
-                    fillOpacity: 1
-                }).addTo(map);
-
-                // Fetch Exact Landmark/Place Name
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
-                    const data = await response.json();
-                    
-                    // Priority: Place Name > Road > Suburb
-                    const name = data.name || data.address.amenity || data.address.building || data.address.road || "Pinned Location";
-                    
-                    document.getElementById('landmarkName').innerText = `📍 ${name}`;
-                    document.getElementById('fullAddress').innerText = data.display_name;
-                    marker.bindPopup(`<b>Exact Location Found</b>`).openPopup();
-                } catch (err) {
-                    document.getElementById('landmarkName').innerText = "Location Identified";
-                    document.getElementById('fullAddress').innerText = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-                }
-            },
-            (error) => {
-                alert("Permission Denied: Please allow location access.");
-                closeTracker();
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
+        if (navigator.geolocation) {
+            // THE "REAL" TRACKER: watchPosition updates every time the device moves
+            watchId = navigator.geolocation.watchPosition(updatePosition, handleError, {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 5000
+            });
+        } else {
+            alert("Geolocation not supported.");
+        }
     }
 
-    function closeTracker() {
-        document.getElementById('mapOverlay').style.display = 'none';
-        document.getElementById('scanner').style.display = 'none';
+    async function updatePosition(position) {
+        const { latitude, longitude, accuracy } = position.coords;
+        const latlng = [latitude, longitude];
+
+        // Update Coordinates Display
+        document.getElementById('coords').innerText = `LAT: ${latitude.toFixed(5)} | LON: ${longitude.toFixed(5)}`;
+
+        // Update Map Visuals
+        if (!marker) {
+            marker = L.circleMarker(latlng, { radius: 10, color: '#fff', fillColor: '#00f2ff', fillOpacity: 1, weight: 3 }).addTo(map);
+            circle = L.circle(latlng, { radius: accuracy, color: '#00f2ff', fillOpacity: 0.1, weight: 1 }).addTo(map);
+        } else {
+            marker.setLatLng(latlng);
+            circle.setLatLng(latlng).setRadius(accuracy);
+        }
+
+        if (followMode) {
+            map.setView(latlng, 18);
+        }
+
+        // Fetch Landmark Name
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+            const data = await res.json();
+            const name = data.name || data.address.amenity || data.address.building || data.address.road || "On the move";
+            document.getElementById('landmark').innerText = `📍 ${name}`;
+            document.getElementById('address').innerText = data.display_name;
+        } catch (e) {
+            document.getElementById('landmark').innerText = "Target Locked";
+        }
+    }
+
+    function toggleFollow() {
+        followMode = !followMode;
+        const btn = document.getElementById('followBtn');
+        btn.style.background = followMode ? 'var(--neon)' : '#334155';
+        btn.style.color = followMode ? '#000' : '#fff';
+    }
+
+    function stopTracking() {
+        if (watchId) navigator.geolocation.clearWatch(watchId);
+        document.getElementById('trackerUI').style.display = 'none';
+        location.reload(); // Hard reset for clean exit
+    }
+
+    function handleError(err) {
+        console.warn(`ERROR(${err.code}): ${err.message}`);
+        if (err.code === 1) alert("Please enable GPS permissions.");
     }
 </script>
 
