@@ -3,35 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Location Finder</title>
+    <title>Fast Location Finder</title>
 
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
-    <!-- Leaflet JavaScript -->
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-    <!-- Style CSS -->
     <link rel="stylesheet" href="./style.css">
+    
+    <style>
+        /* Ensuring the map has dimensions immediately */
+        #map { 
+            height: 400px; 
+            width: 100%; 
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .loading-spinner {
+            display: none;
+            color: #555;
+            font-style: italic;
+        }
+    </style>
 </head>
 <body>
     
     <div class="main">
-
         <div class="container">
             <h1>User Location Finder</h1>
 
-            <button id="findLocation" onclick="initMap()">Find My Location</button>
+            <button id="findLocation">Find My Location</button>
+            <p id="status" class="loading-spinner">Searching for satellites...</p>
 
-            <div class="location-container" style="display: none;">
+            <div class="location-container" id="results" style="display: none;">
                 <div id="map"></div>
                 <div id="address"></div>
                 <button onclick="location.reload()">Locate Again</button>
             </div>
         </div>
-
     </div>
 
-    <!-- Script JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="./script.js"></script>   
 </body>
 </html>
