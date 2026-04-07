@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Tactical Tracker</title>
+    <title>Global Precision Tracker</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -11,160 +11,171 @@
     <style>
         :root {
             --neon: #00f2ff;
-            --danger: #ff3e3e;
-            --glass: rgba(10, 15, 25, 0.85);
+            --accent: #7000ff;
+            --glass: rgba(15, 23, 42, 0.8);
+            --border: rgba(255, 255, 255, 0.1);
         }
 
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #05070a; font-family: 'Inter', sans-serif; overflow: hidden; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; }
 
-        /* Centered Entry */
-        .hero { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+        body, html { width: 100%; height: 100%; background: #020617; overflow: hidden; color: white; }
+
+        /* --- BEAUTIFIED ENTRY SCREEN --- */
+        .hero {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; width: 100%; position: relative;
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+        }
+
+        /* Animated Background Nodes */
+        .hero::before {
+            content: ""; position: absolute; width: 200%; height: 200%;
+            background-image: radial-gradient(var(--border) 1px, transparent 1px);
+            background-size: 50px 50px; transform: rotate(15deg);
+            animation: moveGrid 60s linear infinite; z-index: 0;
+        }
+        @keyframes moveGrid { from { transform: rotate(15deg) translateY(0); } to { transform: rotate(15deg) translateY(-500px); } }
+
+        .glass-card {
+            z-index: 10; padding: 40px; border-radius: 30px;
+            background: var(--glass); backdrop-filter: blur(20px);
+            border: 1px solid var(--border); text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
         .btn-launch {
-            background: linear-gradient(45deg, #0062ff, #00f2ff);
-            color: white; padding: 22px 45px; border: none; border-radius: 50px;
+            background: linear-gradient(135deg, var(--accent), var(--neon));
+            color: white; padding: 18px 40px; border: none; border-radius: 15px;
             font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
-            cursor: pointer; box-shadow: 0 0 30px rgba(0, 242, 255, 0.3); transition: 0.3s;
+            cursor: pointer; position: relative; overflow: hidden;
+            transition: all 0.3s ease; box-shadow: 0 0 20px rgba(112, 0, 255, 0.4);
         }
-        .btn-launch:hover { transform: scale(1.05); box-shadow: 0 0 50px rgba(0, 242, 255, 0.5); }
+        .btn-launch:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 0 40px rgba(0, 242, 255, 0.6); }
 
-        /* Full Screen UI */
+        /* --- FULL SCREEN LIVE MAP UI --- */
         #trackerUI { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 100; flex-direction: column; }
-        #map { flex-grow: 1; width: 100%; background: #000; }
+        #map { flex-grow: 1; width: 100%; }
 
-        /* Top Overlay */
-        .top-bar {
-            position: absolute; top: 20px; left: 20px; right: 20px; z-index: 1000;
+        /* HUD Overlay */
+        .hud-top {
+            position: absolute; top: 15px; left: 15px; right: 15px; z-index: 1000;
             display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none;
         }
-        .info-glass {
-            background: var(--glass); backdrop-filter: blur(15px);
-            border: 1px solid rgba(0, 242, 255, 0.2); padding: 15px; border-radius: 15px;
-            color: white; width: 280px; pointer-events: auto;
-        }
-        .status-dot { height: 8px; width: 8px; background: #4ade80; border-radius: 50%; display: inline-block; margin-right: 8px; animation: blink 1s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* Controls */
-        .side-btns { display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
-        .circle-btn {
-            width: 50px; height: 50px; border-radius: 50%; border: none;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-size: 20px; cursor: pointer; transition: 0.2s;
+        .location-panel {
+            background: var(--glass); backdrop-filter: blur(10px); width: 320px;
+            padding: 20px; border-radius: 20px; border: 1px solid var(--border); pointer-events: auto;
         }
-        .close-btn { background: var(--danger); box-shadow: 0 0 15px rgba(255, 62, 62, 0.4); }
-        .recenter-btn { background: var(--neon); color: #000; box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); }
 
-        /* Coordinates Footer */
-        .coords-footer {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 30px;
-            color: var(--neon); font-family: monospace; font-size: 0.9rem; z-index: 1000;
-            border: 1px solid var(--neon); letter-spacing: 1px;
+        .detail-row { display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.75rem; color: #94a3b8; }
+        .town-tag { background: rgba(0, 242, 255, 0.1); color: var(--neon); padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+
+        .btn-nav {
+            display: block; width: 100%; margin-top: 15px; padding: 10px;
+            background: #ffffff10; border: 1px solid var(--border); color: var(--neon);
+            text-decoration: none; text-align: center; border-radius: 10px; font-weight: bold; font-size: 0.8rem;
+        }
+        .btn-nav:hover { background: var(--neon); color: #000; }
+
+        .close-x {
+            background: #ef4444; color: white; border: none; width: 40px; height: 40px;
+            border-radius: 12px; font-size: 20px; cursor: pointer; pointer-events: auto;
         }
     </style>
 </head>
 <body>
 
-    <div class="hero">
-        <button class="btn-launch" onclick="startLiveTracking()">Activate Real-Time Tracker</button>
-        <p style="color: #64748b; margin-top: 20px;">Precision Landmark Detection Enabled</p>
+    <div class="hero" id="entryScreen">
+        <div class="glass-card">
+            <h1 style="margin-bottom: 10px; font-size: 2rem;">Precision Tracker</h1>
+            <p style="color: #94a3b8; margin-bottom: 30px;">Live Geospatial Satellite Uplink</p>
+            <button class="btn-launch" onclick="launchTracker()">Initialize Uplink</button>
+        </div>
     </div>
 
     <div id="trackerUI">
-        <div class="top-bar">
-            <div class="info-glass">
-                <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; margin-bottom: 5px;">
-                    <span class="status-dot"></span>Live Tracking Active
-                </div>
-                <div id="landmark" style="font-weight: 800; font-size: 1.1rem; color: var(--neon);">Scanning...</div>
-                <div id="address" style="font-size: 0.8rem; opacity: 0.8; margin-top: 5px; height: 40px; overflow: hidden;">Acquiring Signal</div>
+        <div class="hud-top">
+            <div class="location-panel">
+                <div style="font-size: 0.65rem; color: var(--neon); letter-spacing: 2px; margin-bottom: 5px;">📍 TARGET IDENTIFIED</div>
+                <h2 id="landmark" style="font-size: 1.2rem; margin-bottom: 4px;">Locating...</h2>
+                <p id="fullAddress" style="font-size: 0.8rem; opacity: 0.7; height: 35px; overflow: hidden;"></p>
+                
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 12px 0;">
+                
+                <div class="detail-row"><span>Region:</span> <span id="region" class="town-tag">---</span></div>
+                <div class="detail-row"><span>Nearest Town:</span> <span id="nearestTown" class="town-tag">---</span></div>
+                
+                <a href="#" id="googleMapsBtn" target="_blank" class="btn-nav">GET DIRECTIONS</a>
             </div>
             
-            <div class="side-btns">
-                <button class="circle-btn close-btn" onclick="stopTracking()" title="Close">&times;</button>
-                <button class="circle-btn recenter-btn" onclick="toggleFollow()" id="followBtn" title="Lock Target">⊕</button>
-            </div>
+            <button class="close-x" onclick="location.reload()">&times;</button>
         </div>
 
         <div id="map"></div>
-        <div id="coords" class="coords-footer">LAT: 0.0000 | LON: 0.0000</div>
     </div>
 
 <script>
     let map, marker, circle, watchId;
-    let followMode = true;
 
-    function startLiveTracking() {
+    function launchTracker() {
+        document.getElementById('entryScreen').style.display = 'none';
         document.getElementById('trackerUI').style.display = 'flex';
         
-        // Initialize Map
-        if (!map) {
-            map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© CartoDB'
-            }).addTo(map);
-        }
+        // Initialize Stealth Dark Map
+        map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© Carto'
+        }).addTo(map);
 
         if (navigator.geolocation) {
-            // THE "REAL" TRACKER: watchPosition updates every time the device moves
-            watchId = navigator.geolocation.watchPosition(updatePosition, handleError, {
+            watchId = navigator.geolocation.watchPosition(updateTracker, handleError, {
                 enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 5000
+                maximumAge: 0
             });
-        } else {
-            alert("Geolocation not supported.");
         }
     }
 
-    async function updatePosition(position) {
-        const { latitude, longitude, accuracy } = position.coords;
+    async function updateTracker(pos) {
+        const { latitude, longitude, accuracy } = pos.coords;
         const latlng = [latitude, longitude];
 
-        // Update Coordinates Display
-        document.getElementById('coords').innerText = `LAT: ${latitude.toFixed(5)} | LON: ${longitude.toFixed(5)}`;
-
-        // Update Map Visuals
+        // Map Visuals
         if (!marker) {
             marker = L.circleMarker(latlng, { radius: 10, color: '#fff', fillColor: '#00f2ff', fillOpacity: 1, weight: 3 }).addTo(map);
             circle = L.circle(latlng, { radius: accuracy, color: '#00f2ff', fillOpacity: 0.1, weight: 1 }).addTo(map);
+            map.setView(latlng, 15);
         } else {
             marker.setLatLng(latlng);
             circle.setLatLng(latlng).setRadius(accuracy);
+            map.panTo(latlng);
         }
 
-        if (followMode) {
-            map.setView(latlng, 18);
-        }
+        // Directions Link
+        document.getElementById('googleMapsBtn').href = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
 
-        // Fetch Landmark Name
+        // Fetch Detailed Geo-Data
         try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
             const data = await res.json();
-            const name = data.name || data.address.amenity || data.address.building || data.address.road || "On the move";
-            document.getElementById('landmark').innerText = `📍 ${name}`;
-            document.getElementById('address').innerText = data.display_name;
+            
+            // Extract Details
+            const addr = data.address;
+            const landmark = data.name || addr.amenity || addr.building || addr.road || "Moving Point";
+            const town = addr.city || addr.town || addr.village || addr.suburb || "Local Area";
+            const county = addr.county || addr.state || "Unknown Region";
+
+            document.getElementById('landmark').innerText = landmark;
+            document.getElementById('fullAddress').innerText = data.display_name;
+            document.getElementById('nearestTown').innerText = town;
+            document.getElementById('region').innerText = county;
+
         } catch (e) {
-            document.getElementById('landmark').innerText = "Target Locked";
+            console.log("Details fetch failed");
         }
     }
 
-    function toggleFollow() {
-        followMode = !followMode;
-        const btn = document.getElementById('followBtn');
-        btn.style.background = followMode ? 'var(--neon)' : '#334155';
-        btn.style.color = followMode ? '#000' : '#fff';
-    }
-
-    function stopTracking() {
-        if (watchId) navigator.geolocation.clearWatch(watchId);
-        document.getElementById('trackerUI').style.display = 'none';
-        location.reload(); // Hard reset for clean exit
-    }
-
     function handleError(err) {
-        console.warn(`ERROR(${err.code}): ${err.message}`);
-        if (err.code === 1) alert("Please enable GPS permissions.");
+        alert("GPS Error: Ensure location is turned on and permissions are granted.");
     }
 </script>
 
